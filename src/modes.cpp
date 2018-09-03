@@ -12,6 +12,7 @@ GradientLighting gradientlighting;
 FlashColor flashcolor;
 Flicker flicker;
 FlickerPalette flickerpalette;
+DirectColor directcolor;
 // FireWork firework;
 // TestMode2 Test_Mode_2;
 
@@ -325,10 +326,10 @@ void DynamicLighting::animation(){
       leds[j] = ColorFromPalette( pallette, colorindex, uint8_t(255));
     }
 
-    for (uint8_t i = LEDS_INSIDE_START; i < LEDS_INSIDE_END; i++){
-      uint8_t inx = i-LEDS_INSIDE_START;
+    for (uint8_t i = LEDS_OUTSIDE_START; i < LEDS_OUTSIDE_END; i++){
+      //uint8_t inx = i-LEDS_INSIDE_START;
       //log("I: "+String(inx)+" R:"+String(leds[inx].r)+" B:"+String(leds[inx].b)+" G:"+String(leds[inx].g));
-      beem.lights.setPixelColorRGB(i, leds[inx].r,leds[inx].g,leds[inx].b,0);
+      beem.lights.setPixelColorRGB(i, leds[i].r,leds[i].g,leds[i].b,0);
     }
 
 }
@@ -388,7 +389,7 @@ void GradientLighting::animation(){
     if ( index > maxWidth){ index -= maxWidth ; }
     else if ( index < 0){ index += maxWidth ; }
     //log("I: "+String(index + LEDS_INSIDE_START)+" R:"+String(leds[i].r)+" B:"+String(leds[i].b)+" G:"+String(leds[i].g),MODE_LOOP_DEBUG);
-    beem.lights.setPixelColorRGB( index + LEDS_INSIDE_START , leds[i].r, leds[i].g,leds[i].b,0);
+    beem.lights.setPixelColorRGB( index , leds[i].r, leds[i].g,leds[i].b,0);
   }
 }
 
@@ -589,6 +590,40 @@ String Flash::name(){
 
 
 
+//Flash Lighting ////////////////////////////////////////////////////////////
+void DirectColor::initialize()
+{
+  //0 Blue
+  settings[0] = 0;
+  //1 Red
+  settings[1] = 0;
+  //2 Green
+  settings[2] = 0;
+  //3 White
+  settings[3] = 255;
+}
+
+void DirectColor::render()
+{
+  log(  "Rendering: " + name() );
+
+  animation();
+}
+
+void DirectColor::animation(){
+
+    beem.lights.color_all( RgbwColor(settings[1],settings[2],settings[0],settings[3]) );
+
+}
+
+void DirectColor::update()
+{
+
+}
+
+String DirectColor::name(){
+  return this -> mode_name;
+}
 
 
 
@@ -631,13 +666,14 @@ void ModeManager::addMode( Mode *mode)
 }
 
 void ModeManager::setup_modes(){
-  addMode( &solidcolor );
   addMode( &flicker );
+  addMode( &solidcolor );
   addMode( &flashcolor );
   addMode( &dynamiclighting );
   addMode( &gradientlighting );
   addMode( &flickerpalette );
   addMode( &flash );
+  addMode( &directcolor );
 
   //addMode( &pacman );
   //addMode( &firework );

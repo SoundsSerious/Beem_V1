@@ -1,6 +1,9 @@
 
 //Pin Definition ESP32 - Thinnng
 
+// #define SSID_AP "BEEM"
+#define SSID_AP "BEEM"
+
 #define PRINT_MAINLOOP false
 #define PRINT_COM false
 #define LOG_DEBUG true //5ms log delay
@@ -14,11 +17,18 @@
 
 //LED DIRECTION:
 // START CCW ON RIGHT, PROCEED 360, REVERSE, PROCESED CW 360
-#define NUM_LEDS 95
+// #define NUM_LEDS 50
+// #define LEDS_OUTSIDE_START 0
+// #define LEDS_OUTSIDE_END 49
+// #define LEDS_INSIDE_START 49
+// #define LEDS_INSIDE_END 50
+
+#define NUM_LEDS 116
 #define LEDS_OUTSIDE_START 0
-#define LEDS_OUTSIDE_END 46
-#define LEDS_INSIDE_START 46
-#define LEDS_INSIDE_END 95
+#define LEDS_OUTSIDE_END 115
+#define LEDS_INSIDE_START 115
+#define LEDS_INSIDE_END 116
+
 
 #define LEDS_OUTSIDE_TOP 14
 #define LEDS_OUTSIDE_BOTTOM 38

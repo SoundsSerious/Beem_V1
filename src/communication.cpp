@@ -169,39 +169,39 @@ void COM::initialize_server(){
     request->send(200, "/index.htm");
   });
 
-  // send a file when /index is requested
-  server.on("/tel/activate", HTTP_ANY, [this](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, "/index.htm");
-    if (PRINT_COM) {this -> log("TEL_ACTIVE",true);}
-    //startTelemetryServer();
-    request->send(200);
-  });
-
-  // send a file when /index is requested
-  server.on("/tel/deactivate", HTTP_ANY, [this](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, "/index.htm");
-    if (PRINT_COM) {this -> log("TEL_DEACTIVATE",true);}
-    //stopTelemetryServer();
-    request->send(200);
-  });
-
-  // send a file when /index is requested
-  server.on("/client/pos", HTTP_GET, [this](AsyncWebServerRequest *request){
-    //this -> log("CLIENT POSITION",true);
-    int params = request->params();
-    int i;
-    for(i=0;i<params;i++){
-      AsyncWebParameter* h = request->getParam(i);
-      String name = String(h->name().c_str());
-      String value = String(h->value().c_str());
-      //this -> log("HEADER: "+String(h->name().c_str())+"|\t"+String(h->value().c_str()),true);
-      if ( name == "DIST") {
-          //this -> log("SETTING DISTANCE",true);
-          //beem.physics.C1_Distance = value.toFloat();
-        }
-    }
-    request->send(200);
-  });
+  // // send a file when /index is requested
+  // server.on("/tel/activate", HTTP_ANY, [this](AsyncWebServerRequest *request){
+  //   //request->send(SPIFFS, "/index.htm");
+  //   if (PRINT_COM) {this -> log("TEL_ACTIVE",true);}
+  //   //startTelemetryServer();
+  //   request->send(200);
+  // });
+  //
+  // // send a file when /index is requested
+  // server.on("/tel/deactivate", HTTP_ANY, [this](AsyncWebServerRequest *request){
+  //   //request->send(SPIFFS, "/index.htm");
+  //   if (PRINT_COM) {this -> log("TEL_DEACTIVATE",true);}
+  //   //stopTelemetryServer();
+  //   request->send(200);
+  // });
+  //
+  // // send a file when /index is requested
+  // server.on("/client/pos", HTTP_GET, [this](AsyncWebServerRequest *request){
+  //   //this -> log("CLIENT POSITION",true);
+  //   int params = request->params();
+  //   int i;
+  //   for(i=0;i<params;i++){
+  //     AsyncWebParameter* h = request->getParam(i);
+  //     String name = String(h->name().c_str());
+  //     String value = String(h->value().c_str());
+  //     //this -> log("HEADER: "+String(h->name().c_str())+"|\t"+String(h->value().c_str()),true);
+  //     if ( name == "DIST") {
+  //         //this -> log("SETTING DISTANCE",true);
+  //         //beem.physics.C1_Distance = value.toFloat();
+  //       }
+  //   }
+  //   request->send(200);
+  // });
 
   server.on("/lights/settings/set", HTTP_GET, [this](AsyncWebServerRequest *request){
     int params = request->params();

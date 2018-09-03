@@ -18,7 +18,7 @@ public:
   //Lights();
   ~Lights(){};
   float brightness_multiplier = 0.05;
-  bool _on = false;
+  bool _on = true;
 
   int temperature = 5500;
   int temp_max = 10000;

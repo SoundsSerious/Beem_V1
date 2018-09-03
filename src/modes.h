@@ -122,9 +122,9 @@ class DynamicLighting: public Mode
     // virtual void leave();
     virtual String name();
 
-    uint8_t inner_leds = 48;
+    uint8_t inner_leds = LEDS_OUTSIDE_END;
     CRGB leds[NUM_LEDS];
-    uint8_t heat[48];
+    uint8_t heat[LEDS_OUTSIDE_END];
     void animation();
 
     // SPARKING: What chance (out of 255) is there that a new spark will be lit?
@@ -150,7 +150,7 @@ class GradientLighting: public Mode
 
     //Animation Stuff
     uint8_t start_index,pos_index;
-    uint16_t maxWidth = LEDS_OUTSIDE_END+2;
+    uint16_t maxWidth = LEDS_OUTSIDE_END;
     uint16_t halfWidth = maxWidth / 2;
     uint8_t incriment = 255 / halfWidth;
     CRGB leds[LEDS_OUTSIDE_END+2];
@@ -242,6 +242,26 @@ class Flash: public Mode
 
     bool sparking[NUM_LEDS];
     uint8_t spark_val[NUM_LEDS];
+    void animation();
+
+    //Observer Function Overloading
+    //virtual void onNotify(COMEvent *event);
+
+};
+
+class DirectColor: public Mode
+{
+  //Every iteration has x percent chance to light up start a flicker at a cell...
+  //Flicker Effect: Increase In Brightness -> Hold -> Dim to Zero
+
+  public:
+    String mode_name = "DirectColor";
+    virtual void render();
+    virtual void initialize();
+    virtual void update();
+    // virtual void leave();
+    virtual String name();
+
     void animation();
 
     //Observer Function Overloading

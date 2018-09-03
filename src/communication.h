@@ -19,7 +19,6 @@
 #define MAX_CLIENTS 10
 #define WL_MAC_ADDR_LENGTH 6
 
-#define SSID_AP "BEEM"
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -31,8 +30,8 @@ class COM { //, public Subject{
   //In which we send information
 
 public:
-  COM(): server(BEEMO_PORT),events("/events"),
-         ws("/ws"),telemetry_server(TELEM_PORT){};
+  COM(): server(BEEMO_PORT), events("/events"), ws("/ws") {};
+         //,telemetry_server(TELEM_PORT){};
 
   bool is_wifi_on = false;
   void wifi_on();
@@ -52,8 +51,8 @@ public:
 
   //Direct Telemetry Server For High Bandwith Operations
   bool telemetry_activated = false;
-  WiFiServer telemetry_server;
-  WiFiClient telemetry_client;
+  //WiFiServer telemetry_server;
+  //WiFiClient telemetry_client;
 
   //These Parse The Current Clients For Uses In Our COM Protocol
   int clientCount = 0;
