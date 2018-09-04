@@ -66,6 +66,8 @@ void Beem::update(){
   com.close();
   yield();
 
+  //Print Free Memory
+  com.log("Free Heap: "+String(ESP.getFreeHeap()) + "Bytes");
 }
 
 

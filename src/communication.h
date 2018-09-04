@@ -10,12 +10,11 @@
 // #include "AsyncJson.h"
 #include "ArduinoJson.h"
 #include "ESPAsyncWebServer.h"
+#include "painlessMesh.h"
 //#include <ESPmDNS.h>
 
 #include "system_info.h"
 
-#define BEEMO_PORT 18330
-#define TELEM_PORT 8080
 #define MAX_CLIENTS 10
 #define WL_MAC_ADDR_LENGTH 6
 
@@ -25,6 +24,10 @@
 
 void handleWiFiEvent(WiFiEvent_t event);
 
+// Task to blink the number of nodes
+// Task blinkNoNodes;
+// bool onFlag = false;
+// bool calc_delay = false;
 
 class COM { //, public Subject{
   //In which we send information
@@ -47,6 +50,9 @@ public:
   AsyncWebServer server;
   AsyncEventSource events;
   AsyncWebSocket ws; // access at ws://[esp ip]/ws
+  painlessMesh  mesh;
+  Scheduler userScheduler;
+  SimpleList<uint32_t> nodes;
   //SimpleBLE ble;
 
   //Direct Telemetry Server For High Bandwith Operations
@@ -76,10 +82,20 @@ public:
   //Important Functions
   void initialize();
   void setup_wifi();
+  void setup_mesh();
   // void setup_ble_beacon();
   // void update_ble_beacon();
   void scanWifiNetworks();
   void initialize_server();
+
+  //Mesh Functionality
+  void mesh_receivedCallback(uint32_t from, String & msg);
+  void mesh_newConnectionCallback(uint32_t nodeId);
+  void mesh_changedConnectionCallback();
+  void mesh_nodeTimeAdjustedCallback(int32_t offset);
+  void mesh_delayReceivedCallback(uint32_t from, int32_t delay);
+
+
 
   //Custom Loop Logic -> Some Depriciated
   void update();

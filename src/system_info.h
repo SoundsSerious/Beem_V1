@@ -4,6 +4,14 @@
 // #define SSID_AP "BEEM"
 #define SSID_AP "BEEM"
 
+#define BEEMO_PORT 18330
+#define MESH_PORT 18333
+#define MESH_PASSWORD "L&GY$xg3qNc@nZQS"
+#define TELEM_PORT 8080
+
+#define   BLINK_PERIOD    3000 // milliseconds until cycle repeat
+#define   BLINK_DURATION  100  // milliseconds LED is on for
+
 #define PRINT_MAINLOOP false
 #define PRINT_COM false
 #define LOG_DEBUG true //5ms log delay
