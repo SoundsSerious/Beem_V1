@@ -175,9 +175,9 @@ void COM::initialize_server(){
     uint32_t client_id = c.id();
     IPAddress client_ip = c.remoteIP();
     uint32_t root_id = mesh.getNodeId();
-    mesh_get_node_report(client_id, client_ip, root_id);
-
-    request->send(200);
+    bool worked = mesh_get_node_report(client_id, client_ip, root_id);
+    if (worked ){  request->send(200); }
+    else{ request->send(400); }
   });
 
   server.on("/lights/on", HTTP_GET, [this](AsyncWebServerRequest *request){
@@ -473,7 +473,7 @@ void COM::log(String message, bool force){
   }
 }
 
-void COM::mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id){
+bool COM::mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id){
   //Create JSON
   StaticJsonBuffer<300> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
@@ -489,7 +489,7 @@ void COM::mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t
   String jsonStr;
   root.printTo(jsonStr);
 
-  mesh.sendBroadcast( jsonStr );
+  return mesh.sendBroadcast( jsonStr, true );
 }
 
 void COM::mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t root_id){

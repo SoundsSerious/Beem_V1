@@ -96,7 +96,7 @@ public:
   void initialize_server();
 
 
-  void mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id);
+  bool mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id);
   void mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t root_id);
   void send_external( uint32_t client_id, String client_ip, String msg);
 
