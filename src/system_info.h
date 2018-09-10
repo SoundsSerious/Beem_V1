@@ -1,7 +1,9 @@
 
-//Pin Definition ESP32 - Thinnng
 
-// #define SSID_AP "BEEM"
+//Version:
+//#MajorRelease.Incremental.Build
+#define VERSION "0.2.1"
+
 #define SSID_AP "BEEM"
 
 #define BEEMO_PORT 18330
@@ -20,6 +22,7 @@
 
 #define SLEEP_INTERVAL 2000
 
+//Pin Definition ESP32 - Thinnng
 #define BUTTON 0
 
 

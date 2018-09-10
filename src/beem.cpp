@@ -14,7 +14,7 @@ void Beem::initlaize(){
    //physics.initialize();
 
    com.log("Go For Fun");
-   games_manager.setup_modes();
+   modes_manager.setup_modes();
   // //Update Strip
    com.log("Go For Lights");
    lights.initlaize();
@@ -51,11 +51,11 @@ void Beem::update(){
     event_queue.processEntries(*this);
     yield();
 
-    games_manager.update();
+    modes_manager.update();
   }
   //create newEvent and process events (circular buffer)
   if (PRINT_MAINLOOP) {com.log("Puttin On The High Beems!");}
-  games_manager.render();
+  modes_manager.render();
   //processMotion();
   //Notify Observers Of new Event
   // com.log("Hollerin'");
@@ -86,7 +86,7 @@ void Beem::update(){
 // {
 //   //Select Mode
 //   com.log("Switching Modes: "+ String(event.selectedMode),true);
-//   this -> games_manager.switchToMode( (unsigned int) event.selectedMode );
+//   this -> modes_manager.switchToMode( (unsigned int) event.selectedMode );
 // }
 // void Beem::updateThetaOffset()
 // {

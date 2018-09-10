@@ -43,17 +43,10 @@ public:
   COM com;
 
   //Modes
-  ModeManager games_manager;
+  ModeManager modes_manager;
 
   //Events
   EventQueue event_queue;
-
-  //Setting Bits (USE CHECK_BIT(var,pos)): WIP
-  //(1=ON,0=OFF)
-  //1: Serial
-  //2: Telemtry Server
-  //3: Lights - OFF Default
-  uint8_t setting_bits = 0b00000011;
 
   //Important Entity Functions
   virtual void initlaize();

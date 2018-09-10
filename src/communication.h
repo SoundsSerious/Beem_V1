@@ -29,6 +29,13 @@ void handleWiFiEvent(WiFiEvent_t event);
 // bool onFlag = false;
 // bool calc_delay = false;
 
+//Mesh Functionality
+void mesh_receivedCallback(uint32_t from, String & msg);
+void mesh_newConnectionCallback(uint32_t nodeId);
+void mesh_changedConnectionCallback();
+void mesh_nodeTimeAdjustedCallback(int32_t offset);
+void mesh_delayReceivedCallback(uint32_t from, int32_t delay);
+
 class COM { //, public Subject{
   //In which we send information
 
@@ -37,8 +44,8 @@ public:
          //,telemetry_server(TELEM_PORT){};
 
   bool is_wifi_on = false;
-  void wifi_on();
-  void wifi_off();
+  // void wifi_on();
+  // void wifi_off();
 
   //Event Timing
   unsigned long old_time;
@@ -81,21 +88,17 @@ public:
 
   //Important Functions
   void initialize();
-  void setup_wifi();
+  // void setup_wifi();
   void setup_mesh();
   // void setup_ble_beacon();
   // void update_ble_beacon();
   void scanWifiNetworks();
   void initialize_server();
 
-  //Mesh Functionality
-  void mesh_receivedCallback(uint32_t from, String & msg);
-  void mesh_newConnectionCallback(uint32_t nodeId);
-  void mesh_changedConnectionCallback();
-  void mesh_nodeTimeAdjustedCallback(int32_t offset);
-  void mesh_delayReceivedCallback(uint32_t from, int32_t delay);
 
-
+  void mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id);
+  void mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t root_id);
+  void send_external( uint32_t client_id, String client_ip, String msg);
 
   //Custom Loop Logic -> Some Depriciated
   void update();
@@ -116,37 +119,6 @@ public:
 
   void log(String message,bool force=false);
 
-  // //Telemetry Functions
-  // enum TEL_TYPES {TME,MAG,GYRO,ALIN,AWORLD,VEL,POS};
-  // void startTelemetryServer();
-  // void stopTelemetryServer();
-  // void serveTelemetry();
-  // void directTelemetry(TEL_TYPES type, unsigned long time);
-  // void directTelemetry(TEL_TYPES type, float x, float y, float z);
-  // //void emdTelemetry();
-  //
-  //
-  // //Telemetry Functions
-  // void send_telemetry();
-  // void send_time();
-  // void send_mag();
-  // void send_acl();
-  // void send_acl_rl();
-  // void send_acl_wlrd();
-  // void send_gyro();
-  // void send_vel();
-  // void send_pos();
-  //
-  // //Depeciated String Telemetry (not good for speed but good for debug)
-  // void telemetry(String pck, String message);
-  // void str_send_telemetry();
-  // void str_send_time();
-  // void str_send_gyro();
-  // void str_send_acl();
-  // void str_send_acl_rl();
-  // void str_send_vel();
-  // void str_send_pos();
-  // void str_send_mag();
 
 };
 

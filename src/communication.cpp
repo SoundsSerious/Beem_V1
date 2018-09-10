@@ -4,18 +4,18 @@ void handleWiFiEvent(WiFiEvent_t event){
     switch(event) {
         case SYSTEM_EVENT_AP_START:
             if (PRINT_COM) {beem.com.log("AP Started",true);}
-            WiFi.softAPsetHostname(SSID_AP);
+            //WiFi.softAPsetHostname(SSID_AP);
             break;
         case SYSTEM_EVENT_AP_STOP:
               if (PRINT_COM) {beem.com.log("AP Stopped",true);}
             break;
         case SYSTEM_EVENT_STA_START:
               if (PRINT_COM) {beem.com.log("STA Started",true);}
-            WiFi.setHostname(SSID_AP);
+            //WiFi.setHostname(SSID_AP);
             break;
         case SYSTEM_EVENT_STA_CONNECTED:
               if (PRINT_COM) {beem.com.log("STA Connected",true);}
-            WiFi.enableIpV6();
+            //WiFi.enableIpV6();
             break;
         case SYSTEM_EVENT_AP_STA_GOT_IP6:
               if (PRINT_COM) {beem.com.log("STA IPv6: "+WiFi.localIPv6().toString(),true);}
@@ -131,37 +131,14 @@ void COM::setup_mesh(){
   mesh.init(SSID_AP, MESH_PASSWORD, &userScheduler, MESH_PORT);
   mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);
 
-  // mesh.onReceive(&mesh_receivedCallback);
+  mesh.onReceive(mesh_receivedCallback);
   // mesh.onNewConnection(&mesh_newConnectionCallback);
   // mesh.onChangedConnections(&mesh_changedConnectionCallback);
   // mesh.onNodeTimeAdjusted(&mesh_nodeTimeAdjustedCallback);
   // mesh.onNodeDelayReceived(&mesh_delayReceivedCallback);
 
 
-  //Task taskSendMessage( TASK_SECOND * 1, TASK_FOREVER, &sendMessage );
-  //userScheduler.addTask( taskSendMessage );
-  //taskSendMessage.enable();
 
-  // blinkNoNodes.set(BLINK_PERIOD, (mesh.getNodeList().size() + 1) * 2, []() {
-  //   // If on, switch off, else switch on
-  //   if (onFlag)
-  //     onFlag = false;
-  //   else
-  //     onFlag = true;
-  //   blinkNoNodes.delay(BLINK_DURATION);
-  //
-  //   if (blinkNoNodes.isLastIteration()) {
-  //     // Finished blinking. Reset task for next run
-  //     // blink number of nodes (including this node) times
-  //     blinkNoNodes.setIterations((this -> mesh.getNodeList().size() + 1) * 2);
-  //     // Calculate delay based on current mesh time and BLINK_PERIOD
-  //     // This results in blinks between nodes being synced
-  //     blinkNoNodes.enableDelayed(BLINK_PERIOD -
-  //         (this -> mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-  //   }
-  //   });
-  // userScheduler.addTask(blinkNoNodes);
-  // blinkNoNodes.enable();
 }
 
 void COM::initialize_server(){
@@ -189,6 +166,19 @@ void COM::initialize_server(){
     if (PRINT_COM) {this -> log("POST UPLOAD",true);}
     request->send(200);
   }, onUpload);
+
+  server.on("/mesh/report", HTTP_POST, [this](AsyncWebServerRequest *request){
+    if (PRINT_COM) {this -> log("MESH REPORT",true);}
+
+    //Get Communication Info
+    AsyncWebSocketClient c = AsyncWebSocketClient(request,&ws);
+    uint32_t client_id = c.id();
+    IPAddress client_ip = c.remoteIP();
+    uint32_t root_id = mesh.getNodeId();
+    mesh_get_node_report(client_id, client_ip, root_id);
+
+    request->send(200);
+  });
 
   server.on("/lights/on", HTTP_GET, [this](AsyncWebServerRequest *request){
     if (PRINT_COM) {this -> log("Lights ON",true);}
@@ -319,7 +309,7 @@ void COM::initialize_server(){
         int gamesel = value.toInt();
         if (gamesel >=0 ){
           unsigned int selectedMode = (unsigned int)(gamesel);
-          beem.games_manager.switchToMode(selectedMode);
+          beem.modes_manager.switchToMode(selectedMode);
         }
       }
     }
@@ -343,69 +333,31 @@ void COM::initialize_server(){
 } //End initialize_server
 
 
-void COM::setup_wifi(){
-  wifi_on();
-  WiFi.onEvent(handleWiFiEvent);
-  scanWifiNetworks();
-}
 
-void COM::wifi_on(){
-  log("Turning Wifi ON..",true);
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(SSID_AP);
-  is_wifi_on = true;
-}
+// void COM::setup_wifi(){
+//   wifi_on();
+//   WiFi.onEvent(handleWiFiEvent);
+//   scanWifiNetworks();
+// }
+//
+// void COM::wifi_on(){
+//   log("Turning Wifi ON..",true);
+//   WiFi.mode(WIFI_AP);
+//   WiFi.softAP(SSID_AP);
+//   is_wifi_on = true;
+// }
+//
+// void COM::wifi_off(){
+//   log("Turning Wifi OFF..",true);
+//   WiFi.disconnect(true);
+//   WiFi.mode(WIFI_OFF);
+//   is_wifi_on = false;
+// }
 
-void COM::wifi_off(){
-  log("Turning Wifi OFF..",true);
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
-  is_wifi_on = false;
-}
 
 
 
 
-void COM::mesh_receivedCallback(uint32_t from, String & msg) {
-  log("startHere: Received from"+String(from)+"msg=" + msg.c_str());
-}
-
-void COM::mesh_newConnectionCallback(uint32_t nodeId) {
-  // Reset blink task
-  //onFlag = false;
-  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-
-  log("--> startHere: New Connection, nodeId: " +String(nodeId));
-}
-
-void COM::mesh_changedConnectionCallback() {
-  log("Changed connections: " + String(mesh.subConnectionJson().c_str()));
-  // Reset blink task
-  //onFlag = false;
-  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-
-  nodes = mesh.getNodeList();
-
-  log("Num nodes: " + String(nodes.size()));
-  log("Connection list:");
-
-  SimpleList<uint32_t>::iterator node = nodes.begin();
-  while (node != nodes.end()) {
-    log(String( *node) );
-    node++;
-  }
-  //calc_delay = true;
-}
-
-void COM::mesh_nodeTimeAdjustedCallback(int32_t offset) {
-  log("Adjusted time "+String(mesh.getNodeTime())+ " Offset =" + String(offset) );
-}
-
-void COM::mesh_delayReceivedCallback(uint32_t from, int32_t delay) {
-  log("Delay to node"+ String(from) +"is" + String(delay) );
-}
 
 
 void COM::flush()
@@ -519,4 +471,142 @@ void COM::log(String message, bool force){
     if (LOG_DEBUG){Serial.println( "LOG:\t"+message  );}
     broadcastPrimary( "LOG:\t"+message );
   }
+}
+
+void COM::mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id){
+  //Create JSON
+  StaticJsonBuffer<300> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["cmd"] = "report";
+  root["path"]= "/mesh/report";
+  root["nodes"]= "all";
+
+  JsonObject& data = root.createNestedObject("data");
+  data["client id"] = client_id;
+  data["client ip"] = client_ip.toString();
+  data["mesh id"] = root_id;
+
+  String jsonStr;
+  root.printTo(jsonStr);
+
+  mesh.sendBroadcast( jsonStr );
+}
+
+void COM::mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t root_id){
+  //Create JSON
+  StaticJsonBuffer<300> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["cmd"] = "response";
+  root["path"]= client_id;
+  root["node"]= mesh.getNodeId();
+
+  JsonObject& data = root.createNestedObject("data");
+  JsonObject& settings = root.createNestedObject("settings");
+  settings["temp"] = beem.lights.temperature;
+  settings["power"] = beem.lights._on;
+  settings["brightness"] = beem.lights.brightness_multiplier;
+
+  JsonObject& mode = root.createNestedObject("mode");
+
+  mode["id"] = beem.modes_manager.modeIndex;
+  //Mode *m = beem.modes_manager.currentMode();
+  //mode["id"] = m -> colors
+
+  String jsonStr;
+  root.printTo(jsonStr);
+
+  mesh.sendSingle(root_id, jsonStr);
+}
+
+void COM::send_external( uint32_t client_id, String client_ip, String msg){
+  ws.text(client_id,msg);
+}
+
+//Task taskSendMessage( TASK_SECOND * 1, TASK_FOREVER, &sendMessage );
+//userScheduler.addTask( taskSendMessage );
+//taskSendMessage.enable();
+
+// blinkNoNodes.set(BLINK_PERIOD, (mesh.getNodeList().size() + 1) * 2, []() {
+//   // If on, switch off, else switch on
+//   if (onFlag)
+//     onFlag = false;
+//   else
+//     onFlag = true;
+//   blinkNoNodes.delay(BLINK_DURATION);
+//
+//   if (blinkNoNodes.isLastIteration()) {
+//     // Finished blinking. Reset task for next run
+//     // blink number of nodes (including this node) times
+//     blinkNoNodes.setIterations((this -> mesh.getNodeList().size() + 1) * 2);
+//     // Calculate delay based on current mesh time and BLINK_PERIOD
+//     // This results in blinks between nodes being synced
+//     blinkNoNodes.enableDelayed(BLINK_PERIOD -
+//         (this -> mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+//   }
+//   });
+// userScheduler.addTask(blinkNoNodes);
+// blinkNoNodes.enable();
+
+
+//Mesh Functionality
+
+void mesh_receivedCallback(uint32_t from, String & msg) {
+  beem.com.log("startHere: Received from"+String(from)+"msg=" + msg.c_str());
+  StaticJsonBuffer<512> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(msg);
+
+  String cmd = root["cmd"];
+  //String path = root["path"];
+
+  if (cmd == "report"){
+    //Send Back A Response
+    beem.com.mesh_reply_to_report(  root["data"]["client id"],
+                                    root["data"]["client ip"],
+                                    root["data"]["mesh id"]);
+
+  }
+
+  if (cmd == "response"){
+    //Send Data To Phone
+    beem.com.send_external( root["data"]["client id"],
+                            root["data"]["client ip"],
+                            msg);
+  }
+}
+
+void mesh_newConnectionCallback(uint32_t nodeId) {
+  // Reset blink task
+  //onFlag = false;
+  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+
+  beem.com.log("--> startHere: New Connection, nodeId: " +String(nodeId));
+}
+
+void mesh_changedConnectionCallback() {
+  beem.com.log("Changed connections: " + String(beem.com.mesh.subConnectionJson().c_str()));
+  // Reset blink task
+  //onFlag = false;
+  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+
+  beem.com.nodes = beem.com.mesh.getNodeList();
+
+  beem.com.log("Num nodes: " + String(beem.com.nodes.size()));
+  beem.com.log("Connection list:");
+
+  SimpleList<uint32_t>::iterator node = beem.com.nodes.begin();
+  while (node != beem.com.nodes.end()) {
+    beem.com.log(String( *node) );
+    node++;
+  }
+  //calc_delay = true;
+}
+
+void mesh_nodeTimeAdjustedCallback(int32_t offset) {
+  beem.com.log("Adjusted time "+String(beem.com.mesh.getNodeTime())+ " Offset =" + String(offset) );
+}
+
+void mesh_delayReceivedCallback(uint32_t from, int32_t delay) {
+  beem.com.log("Delay to node"+ String(from) +"is" + String(delay) );
 }
