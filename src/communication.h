@@ -10,7 +10,7 @@
 // #include "AsyncJson.h"
 #include "ArduinoJson.h"
 #include "ESPAsyncWebServer.h"
-#include "painlessMesh.h"
+#include "painlessmesh/painlessMesh.h"
 //#include <ESPmDNS.h>
 
 #include "system_info.h"
@@ -19,8 +19,8 @@
 #define WL_MAC_ADDR_LENGTH 6
 
 
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+// #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+// #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 void handleWiFiEvent(WiFiEvent_t event);
 
@@ -96,9 +96,8 @@ public:
   void initialize_server();
 
 
-  bool mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id);
-  void mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t root_id);
-  void send_external( uint32_t client_id, String client_ip, String msg);
+  bool mesh_get_node_report();
+  void mesh_reply_to_report( uint32_t root_id);
 
   //Custom Loop Logic -> Some Depriciated
   void update();

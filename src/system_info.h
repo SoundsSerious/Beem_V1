@@ -5,17 +5,18 @@
 #define VERSION "0.2.1"
 
 #define SSID_AP "BEEM"
+#define AP_CHANNEL 8
 
 #define BEEMO_PORT 18330
 #define MESH_PORT 18333
-#define MESH_PASSWORD "L&GY$xg3qNc@nZQS"
+#define MESH_PASSWORD "beemmeup"
 #define TELEM_PORT 8080
 
 #define   BLINK_PERIOD    3000 // milliseconds until cycle repeat
 #define   BLINK_DURATION  100  // milliseconds LED is on for
 
 #define PRINT_MAINLOOP false
-#define PRINT_COM false
+#define PRINT_COM true
 #define LOG_DEBUG true //5ms log delay
 #define COM_EVT_DEBUG true
 #define MODE_LOOP_DEBUG false
@@ -34,11 +35,11 @@
 // #define LEDS_INSIDE_START 49
 // #define LEDS_INSIDE_END 50
 
-#define NUM_LEDS 116
+#define NUM_LEDS 115
 #define LEDS_OUTSIDE_START 0
-#define LEDS_OUTSIDE_END 115
-#define LEDS_INSIDE_START 115
-#define LEDS_INSIDE_END 116
+#define LEDS_OUTSIDE_END 114
+#define LEDS_INSIDE_START 114
+#define LEDS_INSIDE_END 115
 
 
 #define LEDS_OUTSIDE_TOP 14

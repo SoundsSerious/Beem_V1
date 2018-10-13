@@ -37,30 +37,26 @@ void Beem::update(){
   com.tick();
   if (PRINT_MAINLOOP) {com.log("Beeming Into Space...");}
   //Update COM layer
-  com.update();
 
   //Handle Other Stuff
   if (PRINT_MAINLOOP) {com.log("Updating...");}
   //Update MPU
   start = micros();
   //Physics Update Inner Loop
+  //yield();
   while ( micros() - start < renderInterval) {
-
     if (PRINT_MAINLOOP) {com.log("Do Da Queue");}
-    yield();
-    event_queue.processEntries(*this);
-    yield();
 
+    com.update();
+    //yield();
+    event_queue.processEntries(*this);
+
+    //yield();
     modes_manager.update();
   }
   //create newEvent and process events (circular buffer)
   if (PRINT_MAINLOOP) {com.log("Puttin On The High Beems!");}
   modes_manager.render();
-  //processMotion();
-  //Notify Observers Of new Event
-  // com.log("Hollerin'");
-  //Send Event To Current Motion State
-  // com.log("Making Decisions");
 
   //Close COM to end client
   com.close();

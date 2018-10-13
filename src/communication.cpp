@@ -34,6 +34,8 @@ void handleWiFiEvent(WiFiEvent_t event){
     }
 }
 
+
+
 void onRequest(AsyncWebServerRequest *request){
   //Handle Unknown Request
     if (PRINT_COM) {beem.com.log("Unknown Page: "+request -> url(),true);}
@@ -122,29 +124,31 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
 
 void COM::initialize(){
     if (LOG_DEBUG){Serial.begin( 115200 );} //Open Serial...Mmm breakfast
+    setup_mesh();
     initialize_server();
     //setup_ble_beacon();
 }
 
 void COM::setup_mesh(){
-  //setup_mesh();
-  mesh.init(SSID_AP, MESH_PASSWORD, &userScheduler, MESH_PORT);
-  mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);
 
-  mesh.onReceive(mesh_receivedCallback);
-  // mesh.onNewConnection(&mesh_newConnectionCallback);
-  // mesh.onChangedConnections(&mesh_changedConnectionCallback);
-  // mesh.onNodeTimeAdjusted(&mesh_nodeTimeAdjustedCallback);
-  // mesh.onNodeDelayReceived(&mesh_delayReceivedCallback);
+  mesh.init(SSID_AP, MESH_PASSWORD, &userScheduler, MESH_PORT,WIFI_AP_STA, AP_CHANNEL);
+  mesh.setDebugMsgTypes(ERROR | CONNECTION | COMMUNICATION);
+  //mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION);
+  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE );
 
+  mesh.onReceive(&mesh_receivedCallback);
+  mesh.onNewConnection(&mesh_newConnectionCallback);
+  mesh.onChangedConnections(&mesh_changedConnectionCallback);
+  mesh.onNodeTimeAdjusted(&mesh_nodeTimeAdjustedCallback);
+  mesh.onNodeDelayReceived(&mesh_delayReceivedCallback);
 
-
+  mesh.setHostname(SSID_AP);
 }
 
 void COM::initialize_server(){
   //setup_wifi();
 
-  setup_mesh();
+
 
   // attach AsyncWebSocket
   ws.onEvent(onEvent);
@@ -167,17 +171,12 @@ void COM::initialize_server(){
     request->send(200);
   }, onUpload);
 
-  server.on("/mesh/report", HTTP_POST, [this](AsyncWebServerRequest *request){
+  server.on("/mesh/report", HTTP_GET, [this](AsyncWebServerRequest *request){
     if (PRINT_COM) {this -> log("MESH REPORT",true);}
 
-    //Get Communication Info
-    AsyncWebSocketClient c = AsyncWebSocketClient(request,&ws);
-    uint32_t client_id = c.id();
-    IPAddress client_ip = c.remoteIP();
-    uint32_t root_id = mesh.getNodeId();
-    bool worked = mesh_get_node_report(client_id, client_ip, root_id);
-    if (worked ){  request->send(200); }
-    else{ request->send(400); }
+    bool worked = mesh_get_node_report();
+    if (worked ){ request->send(200); this->log("Report Success");}//request->send(200); }
+    else{ request->send(400); this->log("Report Fail");}//request->send(400); }
   });
 
   server.on("/lights/on", HTTP_GET, [this](AsyncWebServerRequest *request){
@@ -221,7 +220,7 @@ void COM::initialize_server(){
 
   server.on("/lights/settings/get", HTTP_GET, [this](AsyncWebServerRequest *request){
     AsyncResponseStream *response = request->beginResponseStream("text/json");
-    StaticJsonBuffer<512> jsonBuffer;
+    DynamicJsonBuffer jsonBuffer;//StaticJsonBuffer<512> jsonBuffer;
     JsonObject &settings = jsonBuffer.createObject();
     settings["temp"] = beem.lights.temperature;
     settings["power"] = beem.lights._on;
@@ -330,6 +329,8 @@ void COM::initialize_server(){
 
   server.begin();
   //if (LOG_DEBUG){ startTelemetryServer();}
+
+  scanWifiNetworks();
 } //End initialize_server
 
 
@@ -379,6 +380,8 @@ void COM::scanWifiNetworks(){
           // Print SSID and RSSI for each network found
           log( "SSID:\t" + String(WiFi.SSID(i)));
           log( "RSSI:\t" + String(WiFi.RSSI(i)));
+          log( "BSSID:\t" + String(WiFi.BSSIDstr(i)));
+          log( "channel:\t" + String(WiFi.channel(i)));
           //delay(10);
       }
   }
@@ -442,14 +445,17 @@ void COM::start_cycle()
 }
 
 void COM::update(){
-  if (PRINT_COM) {log("Update COM");}
+  //if (PRINT_COM) {log("Update COM");}
+  userScheduler.execute(); // it will run mesh scheduler as well
+  mesh.update();
+  //scanWifiNetworks();
   //serveTelemetry();
   //str_send_telemetry();
 }
 
 void COM::broadcastClients(String msg)
 {
-  if (clientsActive){ws.textAll(msg);}
+  ws.textAll(msg);
 }
 
 void COM::broadcastPrimary(String msg)
@@ -469,22 +475,21 @@ void COM::log(String message, bool force){
   //We will default to serial always for zeee robust debugging
   if ( writeNow || force){
     if (LOG_DEBUG){Serial.println( "LOG:\t"+message  );}
-    broadcastPrimary( "LOG:\t"+message );
+    //broadcastPrimary( "LOG:\t"+message );
   }
 }
 
-bool COM::mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t root_id){
-  //Create JSON
-  StaticJsonBuffer<300> jsonBuffer;
+bool COM::mesh_get_node_report( ){
+  log("mesh get report",true);
+  // Create JSON
+  DynamicJsonBuffer jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
   root["cmd"] = "report";
   root["path"]= "/mesh/report";
   root["nodes"]= "all";
 
   JsonObject& data = root.createNestedObject("data");
-  data["client id"] = client_id;
-  data["client ip"] = client_ip.toString();
-  data["mesh id"] = root_id;
+  data["mesh id"] = mesh.getNodeId();
 
   String jsonStr;
   root.printTo(jsonStr);
@@ -492,12 +497,12 @@ bool COM::mesh_get_node_report(uint32_t client_id, IPAddress client_ip, uint32_t
   return mesh.sendBroadcast( jsonStr, true );
 }
 
-void COM::mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t root_id){
-  //Create JSON
-  StaticJsonBuffer<300> jsonBuffer;
+void COM::mesh_reply_to_report(uint32_t root_id){
+  // Create JSON
+  log("mesh reply to report",true);
+  DynamicJsonBuffer jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
   root["cmd"] = "response";
-  root["path"]= client_id;
   root["node"]= mesh.getNodeId();
 
   JsonObject& data = root.createNestedObject("data");
@@ -514,13 +519,78 @@ void COM::mesh_reply_to_report(uint32_t client_id, String client_ip, uint32_t ro
 
   String jsonStr;
   root.printTo(jsonStr);
-
-  mesh.sendSingle(root_id, jsonStr);
+  if (root_id != mesh.getNodeId()){
+    log("Sending Report Response: m "+jsonStr,true);
+    mesh.sendSingle(root_id, jsonStr);
+  }
+  else{
+    log("I AM gROOT",true);
+    broadcastClients(jsonStr);
+  }
 }
 
-void COM::send_external( uint32_t client_id, String client_ip, String msg){
-  ws.text(client_id,msg);
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//Out Of Class Callback Functions
+void mesh_receivedCallback(uint32_t from, String & msg) {
+  beem.com.log("Received from"+String(from)+"msg=" + msg.c_str(),true);
+  DynamicJsonBuffer jsonBuffer;//StaticJsonBuffer<512> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(msg);
+
+  String cmd = root["cmd"];
+  //String path = root["path"];
+  if (cmd == "report"){
+    // Send Back A Response
+    beem.com.mesh_reply_to_report(root["data"]["mesh id"]);
+
+  }
+
+  if (cmd == "response"){
+    // Send Data To Phone
+    beem.com.broadcastClients(msg);
+  }
 }
+
+void mesh_newConnectionCallback(uint32_t nodeId) {
+
+  beem.com.log("--> startHere: New Connection, nodeId: " +String(nodeId),true);
+}
+
+void mesh_changedConnectionCallback() {
+  beem.com.log("Changed connections: " + String(beem.com.mesh.subConnectionJson().c_str()),true);
+
+  beem.com.nodes = beem.com.mesh.getNodeList();
+
+  beem.com.log("Num nodes: " + String(beem.com.nodes.size()),true);
+  beem.com.log("Connection list:",true);
+
+  SimpleList<uint32_t>::iterator node = beem.com.nodes.begin();
+  while (node != beem.com.nodes.end()) {
+    beem.com.log(String( *node) ,true);
+    node++;
+  }
+}
+
+void mesh_nodeTimeAdjustedCallback(int32_t offset) {
+  //beem.com.log("Adjusted time "+String(beem.com.mesh.getNodeTime())+ " Offset =" + String(offset) ,true);
+}
+
+void mesh_delayReceivedCallback(uint32_t from, int32_t delay) {
+  //beem.com.log("Delay to node"+ String(from) +"is" + String(delay) ,true);
+}
+
+
+// Reset blink task
+//onFlag = false;
+//blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+//blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+// Reset blink task
+//onFlag = false;
+//blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+//blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
 
 //Task taskSendMessage( TASK_SECOND * 1, TASK_FOREVER, &sendMessage );
 //userScheduler.addTask( taskSendMessage );
@@ -550,63 +620,19 @@ void COM::send_external( uint32_t client_id, String client_ip, String msg){
 
 //Mesh Functionality
 
-void mesh_receivedCallback(uint32_t from, String & msg) {
-  beem.com.log("startHere: Received from"+String(from)+"msg=" + msg.c_str());
-  StaticJsonBuffer<512> jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(msg);
 
-  String cmd = root["cmd"];
-  //String path = root["path"];
-
-  if (cmd == "report"){
-    //Send Back A Response
-    beem.com.mesh_reply_to_report(  root["data"]["client id"],
-                                    root["data"]["client ip"],
-                                    root["data"]["mesh id"]);
-
-  }
-
-  if (cmd == "response"){
-    //Send Data To Phone
-    beem.com.send_external( root["data"]["client id"],
-                            root["data"]["client ip"],
-                            msg);
-  }
-}
-
-void mesh_newConnectionCallback(uint32_t nodeId) {
-  // Reset blink task
-  //onFlag = false;
-  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-
-  beem.com.log("--> startHere: New Connection, nodeId: " +String(nodeId));
-}
-
-void mesh_changedConnectionCallback() {
-  beem.com.log("Changed connections: " + String(beem.com.mesh.subConnectionJson().c_str()));
-  // Reset blink task
-  //onFlag = false;
-  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-
-  beem.com.nodes = beem.com.mesh.getNodeList();
-
-  beem.com.log("Num nodes: " + String(beem.com.nodes.size()));
-  beem.com.log("Connection list:");
-
-  SimpleList<uint32_t>::iterator node = beem.com.nodes.begin();
-  while (node != beem.com.nodes.end()) {
-    beem.com.log(String( *node) );
-    node++;
-  }
-  //calc_delay = true;
-}
-
-void mesh_nodeTimeAdjustedCallback(int32_t offset) {
-  beem.com.log("Adjusted time "+String(beem.com.mesh.getNodeTime())+ " Offset =" + String(offset) );
-}
-
-void mesh_delayReceivedCallback(uint32_t from, int32_t delay) {
-  beem.com.log("Delay to node"+ String(from) +"is" + String(delay) );
-}
+//Code To List IP's of nodes attached to AP
+// wifi_sta_list_t *stations; ESP_ERROR_CHECK(esp_wifi_get_station_list(&stations)); tcpip_adapter_sta_list_t *infoList;
+// ESP_ERROR_CHECK(tcpip_adapter_get_sta_list(stations, &infoList));
+// struct station_list *head = infoList;
+// while(infoList != NULL) {
+//    printf("mac: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x " IPSTR " %d\n",
+//       infoList->mac[0],infoList->mac[1],infoList->mac[2],
+// Page 795
+// infoList->mac[3],infoList->mac[4],infoList->mac[5],
+//       IP2STR(&(infoList->ip)),
+//       (uint32_t)(infoList->ip.addr));
+//    infoList = STAILQ_NEXT(infoList, next);
+// }
+// ESP_ERROR_CHECK(esp_adapter_free_sta_list(head));
+// ESP_ERROR_CHECK(esp_wifi_free_station_list());
