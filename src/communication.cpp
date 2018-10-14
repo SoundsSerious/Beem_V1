@@ -260,10 +260,7 @@ void COM::initialize_server(){
       if (name == "S"){ input[2] = (uint8_t)(value.toInt()); }
       if (name == "V"){ input[3] = (uint8_t)(value.toInt()); }
     }
-
-   ModeColorEv * comEvent = new ModeColorEv(input[0],input[1],input[2],input[3]);
-   beem.event_queue.addEvent( comEvent );
-
+    mesh_mode_color( input[0],input[1],input[2],input[3]);
     request->send(200);
   });
 
@@ -279,8 +276,7 @@ void COM::initialize_server(){
       String value = String(h->value().c_str());
       if (name == "I"){ input = (uint8_t)(value.toInt()); }
     }
-   ModePalletteEv * comEvent = new ModePalletteEv(input);
-   beem.event_queue.addEvent( comEvent );
+    mesh_mode_palette(input);
 
     request->send(200);
   });
@@ -290,21 +286,18 @@ void COM::initialize_server(){
 
     int params = request->params();
     int i;
-    String input[4]; //Index,Value,Min,Max
+    uint8_t input[2]; //Index,Value,Min,Max
     for(i=0;i<params;i++){
       AsyncWebParameter* h = request->getParam(i);
       String name = String(h->name().c_str());
       String value = String(h->value().c_str());
-      if (name == "INX"){ input[0] = value; }
-      if (name == "SET"){ input[1] = value; }
-      if (name == "MAX"){ input[3] = value; }
-      if (name == "MIN"){ input[2] = value; }
+      if (name == "INX"){ input[0] = (uint8_t)(value.toInt()); }
+      if (name == "SET"){ input[1] = (uint8_t)(value.toInt()); }
+      //if (name == "MAX"){ input[3] = value; }
+      //if (name == "MIN"){ input[2] = value; }
     }
-    if ( input[2].length() == 0 && input[3].length() == 0){ //Direct SEtting
-      ModeSettingEv * comEvent = new ModeSettingEv( ((uint8_t) input[0].toInt()),
-                                                    ((uint8_t) input[1].toInt()));
-      beem.event_queue.addEvent( comEvent );
-    }
+    mesh_mode_settings( input[0], input[1]);
+
     //Check if min and max bounds were created
     request->send(200);
   });
@@ -341,6 +334,60 @@ void COM::initialize_server(){
 
   scanWifiNetworks();
 } //End initialize_server
+
+
+void COM::mesh_mode_color(uint8_t I, uint8_t H,  uint8_t S,  uint8_t V){
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  root["cmd"] = "action_mode";
+  root["path"] = "/mode/color";
+  root["nodes"] = "all";
+
+  JsonObject &data = root.createNestedObject("data");
+  data["I"] = I;
+  data["H"] = H;
+  data["S"] = S;
+  data["V"] = V;
+
+  String jsonStr;
+  root.printTo( jsonStr );
+
+  mesh.sendBroadcast( jsonStr, true );
+}
+
+void COM::mesh_mode_settings(uint8_t I, uint8_t S){
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  root["cmd"] = "action_mode";
+  root["path"] = "/mode/settings";
+  root["nodes"] = "all";
+
+  JsonObject &data = root.createNestedObject("data");
+  data["I"] = I;
+  data["S"] = S;
+
+  String jsonStr;
+  root.printTo( jsonStr );
+
+  mesh.sendBroadcast( jsonStr, true );
+}
+
+void COM::mesh_mode_palette(uint8_t I){
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  root["cmd"] = "action_mode";
+  root["path"] = "/mode/palette";
+  root["nodes"] = "all";
+
+  JsonObject &data = root.createNestedObject("data");
+  data["I"] = I;
+
+  String jsonStr;
+  root.printTo( jsonStr );
+
+  mesh.sendBroadcast( jsonStr, true );
+}
+
 
 void COM::mesh_mode_select( unsigned int gamesel ){
   DynamicJsonBuffer jsonBuffer;
@@ -438,6 +485,8 @@ void COM::mesh_reply_to_report(uint32_t root_id){
   }
 }
 
+
+//Mesh Response Functions
 void COM::response_settings_set(String msg){
 
   DynamicJsonBuffer jsonBuffer;
@@ -465,6 +514,20 @@ void COM::response_turn_off(){
     beem.lights._on = false;
 }
 
+void COM::response_mode_color(uint8_t I, uint8_t H,  uint8_t S,  uint8_t V){
+   ModeColorEv * comEvent = new ModeColorEv(I, H, S, V);
+   beem.event_queue.addEvent( comEvent );
+}
+
+void COM::response_mode_palette(uint8_t I){
+  ModePalletteEv * comEvent = new ModePalletteEv(I);
+  beem.event_queue.addEvent( comEvent );
+}
+
+void COM::response_mode_settings(uint8_t I, uint8_t S){
+  ModeSettingEv * comEvent = new ModeSettingEv( I, S);
+  beem.event_queue.addEvent( comEvent );
+}
 
 void COM::flush()
 {
@@ -611,7 +674,11 @@ void mesh_receivedCallback(uint32_t from, String & msg) {
 
   if ( cmd == "action_mode"){
     String path = root["path"];
-    if (path == "/mode/select"){ beem.com.response_mode_select(root["data"]["mode_id"]); }
+    JsonObject & data = root["data"];
+    if (path == "/mode/select"){ beem.com.response_mode_select(data["mode_id"]); }
+    if (path == "/mode/color"){ beem.com.response_mode_color(data["I"],data["H"],data["S"],data["V"]); }
+    if (path == "/mode/palette"){ beem.com.response_mode_palette(data["I"]); }
+    if (path == "/mode/settings"){ beem.com.response_mode_settings(data["I"],data["S"]); }
   }
 
 }

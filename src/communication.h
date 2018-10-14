@@ -101,13 +101,18 @@ public:
   void mesh_turn_off();
   void mesh_turn_on();
   void mesh_mode_select(unsigned int gamesel);
-
+  void mesh_mode_color(uint8_t I, uint8_t H,  uint8_t S,  uint8_t V);
+  void mesh_mode_palette(uint8_t I);
+  void mesh_mode_settings(uint8_t I, uint8_t S);
 
   //Device Mesh Response
   void response_turn_off();
   void response_turn_on();
   void response_settings_set(String settingsJson);
   void response_mode_select(unsigned int gamesel);
+  void response_mode_color(uint8_t I, uint8_t H,  uint8_t S,  uint8_t V);
+  void response_mode_palette(uint8_t I);
+  void response_mode_settings(uint8_t I, uint8_t S);
 
   //Custom Loop Logic -> Some Depriciated
   void update();
