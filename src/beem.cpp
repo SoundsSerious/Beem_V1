@@ -44,23 +44,25 @@ void Beem::update(){
   start = micros();
   //Physics Update Inner Loop
   //yield();
-  while ( micros() - start < renderInterval) {
+  //while ( micros() - start < renderInterval) {
     if (PRINT_MAINLOOP) {com.log("Do Da Queue");}
 
-    com.update();
-    //yield();
-    event_queue.processEntries(*this);
+  //yield();
+  com.update();
+  //yield();
+  event_queue.processEntries(*this);
 
-    //yield();
-    modes_manager.update();
-  }
+  //yield();
+  modes_manager.update();
+
+  //}
   //create newEvent and process events (circular buffer)
   if (PRINT_MAINLOOP) {com.log("Puttin On The High Beems!");}
   modes_manager.render();
 
   //Close COM to end client
   com.close();
-  yield();
+  //yield();
 
   //Print Free Memory
   com.log("Free Heap: "+String(ESP.getFreeHeap()) + "Bytes");

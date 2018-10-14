@@ -95,9 +95,19 @@ public:
   void scanWifiNetworks();
   void initialize_server();
 
-
+  //Mesh Functions
   bool mesh_get_node_report();
   void mesh_reply_to_report( uint32_t root_id);
+  void mesh_turn_off();
+  void mesh_turn_on();
+  void mesh_mode_select(unsigned int gamesel);
+
+
+  //Device Mesh Response
+  void response_turn_off();
+  void response_turn_on();
+  void response_settings_set(String settingsJson);
+  void response_mode_select(unsigned int gamesel);
 
   //Custom Loop Logic -> Some Depriciated
   void update();

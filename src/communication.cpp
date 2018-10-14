@@ -181,13 +181,13 @@ void COM::initialize_server(){
 
   server.on("/lights/on", HTTP_GET, [this](AsyncWebServerRequest *request){
     if (PRINT_COM) {this -> log("Lights ON",true);}
-    beem.lights._on = true;
+    mesh_turn_on();
     request->send(200);
   });
 
   server.on("/lights/off", HTTP_GET, [this](AsyncWebServerRequest *request){
     if (PRINT_COM) {this -> log("Lights OFF",true);}
-    beem.lights._on = false;
+    mesh_turn_off();
     request->send(200);
   });
 
@@ -202,18 +202,34 @@ void COM::initialize_server(){
     int params = request->params();
     int i;
     uint8_t input;
+
+    DynamicJsonBuffer jsonBuffer;//StaticJsonBuffer<512> jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+
+    root["cmd"] = "action_lights";
+    root["path"]= "/lights/settings/set";
+    root["nodes"]= "all";
+
+    JsonObject& data = root.createNestedObject("data");
+    data["mesh id"] = mesh.getNodeId();
+
     for(i=0;i<params;i++){
       AsyncWebParameter* h = request->getParam(i);
       String name = String(h->name().c_str());
       String value = String(h->value().c_str());
       if (name == "power"){
           int val = value.toInt();
-          if (val == 0){ beem.lights._on = false;}
-          if (val == 1){ beem.lights._on = true;}
+          if (val == 0){ data["power"] = 0; }
+          if (val == 1){ data["power"] = 1; }
         }
-      if (name == "temp"){  beem.lights.setTemerature(value.toInt()); }
-      if (name == "brightness"){ beem.lights.setBrightness(value.toInt()); }
+      if (name == "temp"){  data["temp"] =value.toInt(); }
+      if (name == "brightness"){ data["brightness"] = value.toInt(); }
     }
+
+    String jsonStr;
+    root.printTo( jsonStr );
+
+    mesh.sendBroadcast( jsonStr, true );
 
     request->send(200);
   });
@@ -290,14 +306,13 @@ void COM::initialize_server(){
       beem.event_queue.addEvent( comEvent );
     }
     //Check if min and max bounds were created
-
-
     request->send(200);
   });
 
   // send a file when /index is requested
   server.on("/mode/select", HTTP_GET, [this](AsyncWebServerRequest *request){
     //this -> log("CLIENT POSITION",true);
+
     int params = request->params();
     int i;
     for(i=0;i<params;i++){
@@ -308,20 +323,14 @@ void COM::initialize_server(){
         int gamesel = value.toInt();
         if (gamesel >=0 ){
           unsigned int selectedMode = (unsigned int)(gamesel);
-          beem.modes_manager.switchToMode(selectedMode);
+          mesh_mode_select( selectedMode );
         }
       }
     }
     request->send(200);
   });
 
-  // HTTP basic authentication
-  // server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
-  //   this -> log("GET LOGIN",true);
-  //   if(!request->authenticate(http_username, http_password))
-  //       return request->requestAuthentication();
-  //   request->send(200, "text/plain", "Login Success!");
-  // });
+
 
   server.onNotFound(onRequest);
   server.onFileUpload(onUpload);
@@ -333,32 +342,128 @@ void COM::initialize_server(){
   scanWifiNetworks();
 } //End initialize_server
 
+void COM::mesh_mode_select( unsigned int gamesel ){
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  root["cmd"] = "action_mode";
+  root["path"] = "/mode/select";
+  root["nodes"] = "all";
 
+  JsonObject &data = root.createNestedObject("data");
+  data["mode_id"] = gamesel;
 
-// void COM::setup_wifi(){
-//   wifi_on();
-//   WiFi.onEvent(handleWiFiEvent);
-//   scanWifiNetworks();
-// }
-//
-// void COM::wifi_on(){
-//   log("Turning Wifi ON..",true);
-//   WiFi.mode(WIFI_AP);
-//   WiFi.softAP(SSID_AP);
-//   is_wifi_on = true;
-// }
-//
-// void COM::wifi_off(){
-//   log("Turning Wifi OFF..",true);
-//   WiFi.disconnect(true);
-//   WiFi.mode(WIFI_OFF);
-//   is_wifi_on = false;
-// }
+  String jsonStr;
+  root.printTo( jsonStr );
 
+  mesh.sendBroadcast( jsonStr, true );
+}
 
+void COM::mesh_turn_off(){
+  log("mesh turn off",true);
 
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["cmd"] = "action_lights";
+  root["path"]= "/lights/off";
+  root["nodes"]= "all";
 
+  String jsonStr;
+  root.printTo(jsonStr);
 
+  mesh.sendBroadcast( jsonStr, true );
+}
+
+void COM::mesh_turn_on(){
+  log("mesh turn off",true);
+
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["cmd"] = "action_lights";
+  root["path"]= "/lights/on";
+  root["nodes"]= "all";
+
+  String jsonStr;
+  root.printTo(jsonStr);
+
+  mesh.sendBroadcast( jsonStr, true );
+}
+
+bool COM::mesh_get_node_report( ){
+  log("mesh get report",true);
+  // Create JSON
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["cmd"] = "report";
+  root["path"]= "/mesh/report";
+  root["nodes"]= "all";
+
+  JsonObject& data = root.createNestedObject("data");
+  data["mesh id"] = mesh.getNodeId();
+
+  String jsonStr;
+  root.printTo(jsonStr);
+
+  return mesh.sendBroadcast( jsonStr, true );
+}
+
+void COM::mesh_reply_to_report(uint32_t root_id){
+  // Create JSON
+  log("mesh reply to report",true);
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["cmd"] = "response";
+  root["node"]= mesh.getNodeId();
+
+  JsonObject& data = root.createNestedObject("data");
+  JsonObject& settings = root.createNestedObject("settings");
+  settings["temp"] = beem.lights.temperature;
+  settings["power"] = beem.lights._on;
+  settings["brightness"] = beem.lights.brightness_multiplier;
+
+  JsonObject& mode = root.createNestedObject("mode");
+
+  mode["id"] = beem.modes_manager.modeIndex;
+  //Mode *m = beem.modes_manager.currentMode();
+  //mode["id"] = m -> colors
+
+  String jsonStr;
+  root.printTo(jsonStr);
+  if (root_id != mesh.getNodeId()){
+    log("Sending Report Response: m "+jsonStr,true);
+    mesh.sendSingle(root_id, jsonStr);
+  }
+  else{
+    log("I AM ROOT",true);
+    broadcastClients(jsonStr);
+  }
+}
+
+void COM::response_settings_set(String msg){
+
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(msg);
+  JsonObject& settingsJson = root["data"];
+
+  if (settingsJson.containsKey("power")){
+      int val = settingsJson["power"];
+      if (val == 0){ beem.lights._on = false;}
+      if (val == 1){ beem.lights._on = true;}
+    }
+  if (settingsJson.containsKey("temp") ){  beem.lights.setTemerature(settingsJson["temp"]); }
+  if (settingsJson.containsKey("brightness")){ beem.lights.setBrightness(settingsJson["brightness"]); }
+}
+
+void COM::response_mode_select(unsigned int selectedMode){
+  beem.modes_manager.switchToMode(selectedMode);
+}
+
+void COM::response_turn_on(){
+    beem.lights._on = true;
+}
+
+void COM::response_turn_off(){
+    beem.lights._on = false;
+}
 
 
 void COM::flush()
@@ -415,9 +520,7 @@ void COM::close(){
 void COM::tick(){
   _tick += 1;
   _telk += 1;
-  //log("TICK: --> "+String( micros()-startLoop));
-  //log("TOCK: --> "+String( beem.mpu.cycle_count ));
-  //log("CPS: --> "+String( beem.mpu.cycle_count /(micros()/1E6) ));
+
   if (_tick == tickCount){
     writeNow = true;
   }
@@ -462,11 +565,6 @@ void COM::broadcastPrimary(String msg)
 { //Get This Guy Going At A Clip
   //Assume We Have An Active First Client - ID Starts at 1 baby
   if (clientsActive){ws.text(firstActive,msg);}
-  //ws.binary(firstActive,(char*) msg.c_str());
-  //AsyncWebSocketClient *c = ws.client(lastActive);
-  //AsyncClient *cl = c -> client();
-  //cl -> write( (char*) msg.c_str() );
-
 }
 
 
@@ -476,56 +574,6 @@ void COM::log(String message, bool force){
   if ( writeNow || force){
     if (LOG_DEBUG){Serial.println( "LOG:\t"+message  );}
     //broadcastPrimary( "LOG:\t"+message );
-  }
-}
-
-bool COM::mesh_get_node_report( ){
-  log("mesh get report",true);
-  // Create JSON
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.createObject();
-  root["cmd"] = "report";
-  root["path"]= "/mesh/report";
-  root["nodes"]= "all";
-
-  JsonObject& data = root.createNestedObject("data");
-  data["mesh id"] = mesh.getNodeId();
-
-  String jsonStr;
-  root.printTo(jsonStr);
-
-  return mesh.sendBroadcast( jsonStr, true );
-}
-
-void COM::mesh_reply_to_report(uint32_t root_id){
-  // Create JSON
-  log("mesh reply to report",true);
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.createObject();
-  root["cmd"] = "response";
-  root["node"]= mesh.getNodeId();
-
-  JsonObject& data = root.createNestedObject("data");
-  JsonObject& settings = root.createNestedObject("settings");
-  settings["temp"] = beem.lights.temperature;
-  settings["power"] = beem.lights._on;
-  settings["brightness"] = beem.lights.brightness_multiplier;
-
-  JsonObject& mode = root.createNestedObject("mode");
-
-  mode["id"] = beem.modes_manager.modeIndex;
-  //Mode *m = beem.modes_manager.currentMode();
-  //mode["id"] = m -> colors
-
-  String jsonStr;
-  root.printTo(jsonStr);
-  if (root_id != mesh.getNodeId()){
-    log("Sending Report Response: m "+jsonStr,true);
-    mesh.sendSingle(root_id, jsonStr);
-  }
-  else{
-    log("I AM gROOT",true);
-    broadcastClients(jsonStr);
   }
 }
 
@@ -552,6 +600,20 @@ void mesh_receivedCallback(uint32_t from, String & msg) {
     // Send Data To Phone
     beem.com.broadcastClients(msg);
   }
+
+  //Command Sections
+  if (cmd == "action_lights"){
+      String path = root["path"];
+      if (path == "/lights/on"){ beem.com.response_turn_on(); }
+      if (path == "/lights/off"){ beem.com.response_turn_off(); }
+      if (path == "/lights/settings/set"){ beem.com.response_settings_set( msg ); }
+  }
+
+  if ( cmd == "action_mode"){
+    String path = root["path"];
+    if (path == "/mode/select"){ beem.com.response_mode_select(root["data"]["mode_id"]); }
+  }
+
 }
 
 void mesh_newConnectionCallback(uint32_t nodeId) {
@@ -582,6 +644,42 @@ void mesh_delayReceivedCallback(uint32_t from, int32_t delay) {
   //beem.com.log("Delay to node"+ String(from) +"is" + String(delay) ,true);
 }
 
+
+
+
+// void COM::setup_wifi(){
+//   wifi_on();
+//   WiFi.onEvent(handleWiFiEvent);
+//   scanWifiNetworks();
+// }
+//
+// void COM::wifi_on(){
+//   log("Turning Wifi ON..",true);
+//   WiFi.mode(WIFI_AP);
+//   WiFi.softAP(SSID_AP);
+//   is_wifi_on = true;
+// }
+//
+// void COM::wifi_off(){
+//   log("Turning Wifi OFF..",true);
+//   WiFi.disconnect(true);
+//   WiFi.mode(WIFI_OFF);
+//   is_wifi_on = false;
+// }
+
+
+//log("TICK: --> "+String( micros()-startLoop));
+//log("TOCK: --> "+String( beem.mpu.cycle_count ));
+//log("CPS: --> "+String( beem.mpu.cycle_count /(micros()/1E6) ));
+
+
+// HTTP basic authentication
+// server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
+//   this -> log("GET LOGIN",true);
+//   if(!request->authenticate(http_username, http_password))
+//       return request->requestAuthentication();
+//   request->send(200, "text/plain", "Login Success!");
+// });
 
 // Reset blink task
 //onFlag = false;
@@ -619,7 +717,10 @@ void mesh_delayReceivedCallback(uint32_t from, int32_t delay) {
 
 
 //Mesh Functionality
-
+//ws.binary(firstActive,(char*) msg.c_str());
+//AsyncWebSocketClient *c = ws.client(lastActive);
+//AsyncClient *cl = c -> client();
+//cl -> write( (char*) msg.c_str() );
 
 //Code To List IP's of nodes attached to AP
 // wifi_sta_list_t *stations; ESP_ERROR_CHECK(esp_wifi_get_station_list(&stations)); tcpip_adapter_sta_list_t *infoList;
